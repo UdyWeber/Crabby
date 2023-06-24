@@ -1,95 +1,82 @@
+mod commands;
+
+use std::collections::HashSet;
 use std::env::var;
-use std::time::Duration;
 
 use dotenv::dotenv;
 
-use rand::Rng;
 use serenity::async_trait;
+use serenity::framework::standard::macros::group;
+use serenity::framework::standard::StandardFramework;
+use serenity::http::Http;
+use serenity::model::prelude::{Message, Ready, ResumedEvent};
 use serenity::prelude::*;
-use serenity::model::channel::Message;
-use serenity::framework::standard::macros::{command, group};
-use serenity::framework::standard::{StandardFramework, CommandResult};
-use tokio::time::sleep;
+use tracing::info;
 
-
-#[group]
-#[commands(ping)]
-struct General;
+use crate::commands::idea::*;
 
 struct Handler;
 
 #[async_trait]
-impl EventHandler for Handler {}
+impl EventHandler for Handler {
+    async fn ready(&self, _: Context, ready: Ready) {
+        info!("Connected as {}", ready.user.name);
+    }
+
+    async fn resume(&self, _: Context, event: ResumedEvent) {
+        info!("Resumed event: {:?}", event);
+    }
+
+    async fn message(&self, _ctx: Context, msg: Message) {
+        match msg.author.bot {
+            true => info!("Skipping message from bot: {}", msg.author.name),
+            false => info!("Received message from {}: {}", msg.author.name, msg.content),
+        }
+    }
+}
+
+#[group]
+#[commands(idea)]
+struct General;
 
 #[tokio::main]
 async fn main() {
     dotenv().ok();
 
-    let framework = StandardFramework::new()
-        .configure(|bot_configuration| bot_configuration.prefix("!")) // set the bot's prefix to "~"
-        .group(&GENERAL_GROUP);
+    tracing_subscriber::fmt::init();
 
-    // Login with a bot token from the environment
     let token = var("DISCORD_TOKEN").expect("Token is invalid");
 
-    println!("Token Loaded!");
+    info!("Token Loaded!");
 
-    let intents = GatewayIntents::non_privileged() | GatewayIntents::MESSAGE_CONTENT;
+    let serenity_http = Http::new(&token);
+
+    let (owners, _bot_id) = match serenity_http.get_current_application_info().await {
+        Ok(info) => {
+            let mut owners = HashSet::new();
+            owners.insert(info.owner.id);
+
+            (owners, info.id)
+        }
+        Err(why) => panic!("Could not access application info: {:?}", why),
+    };
+
+    let intents = GatewayIntents::all();
+
+    let framework = StandardFramework::new()
+        .configure(|bot_configuration| bot_configuration.prefix("!").owners(owners))
+        .group(&GENERAL_GROUP);
+
     let mut client = Client::builder(token, intents)
         .event_handler(Handler)
         .framework(framework)
         .await
         .expect("Error creating client");
 
-    println!("Created Client :D");
+    info!("Created Client :D");
 
     // start listening for events by starting a single shard
     if let Err(why) = client.start().await {
-        println!("An error occurred while running the client: {:?}", why);
+        info!("An error occurred while running the client: {:?}", why);
     }
-}
-
-#[command]
-async fn ping(ctx: &Context, msg: &Message) -> CommandResult {
-    let mut analyzing_message = msg.channel_id.send_message(
-        &ctx.http,
-        |message|{
-            message.embed(|e| {
-                e.title("Analyzing your idea...")
-
-            })
-        }
-    ).await?;
-
-    sleep(Duration::from_secs(5)).await;
-
-    analyzing_message.edit(
-        &ctx, |message| {
-            message.embed(|e|{
-                e.title("The Council of Christmas has decided...");
-                
-                let vector = vec![true, false];
-                let index = rand::thread_rng().gen_range(0..vector.len());
-                let random_value = vector[index];
-                
-                let x = "Lick balls";
-
-                let decided = match random_value {
-                    true => format!("Your idea has been accepted you can start: {}", x),
-                    false => format!("Your idea has been denied, **YOU'RE TRASH**"),
-                };
-
-                e.description(decided);
-
-                let from_caids = match random_value {
-                    true => "Nah he couldn't think that",
-                    false => "Definitely"
-                };
-
-                e.field("Came from Caids?", from_caids, true)
-            })
-        }
-    ).await?;
-
-    Ok(())
 }

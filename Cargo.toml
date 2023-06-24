@@ -8,10 +8,20 @@ edition = "2021"
 [dependencies]
 dotenv = "0.15.0"
 rand = "0.8.5"
-tokio = { version = "1.21.2", features = ["macros", "rt-multi-thread"] }
+tracing = "0.1.37"
+tracing-subscriber = "0.3.17"
+
+
+[dependencies.tokio]
+version = "1.21.2"
+features = [
+    "macros", 
+    "signal", 
+    "rt-multi-thread"
+]
 
 [dependencies.serenity]
-default-features = false
+default-features = true
 features = [
     "builder",
     "chrono",
@@ -23,5 +33,6 @@ features = [
     "standard_framework",
     "utils",
     "rustls_backend",
+    "collector",
 ]
 version = "0.11"
