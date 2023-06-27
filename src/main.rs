@@ -13,6 +13,7 @@ use serenity::model::prelude::{Message, Ready, ResumedEvent};
 use serenity::prelude::*;
 use tracing::info;
 
+use crate::commands::feel::*;
 use crate::commands::idea::*;
 
 struct Handler;
@@ -36,7 +37,7 @@ impl EventHandler for Handler {
 }
 
 #[group]
-#[commands(idea)]
+#[commands(idea, feel)]
 struct General;
 
 #[tokio::main]

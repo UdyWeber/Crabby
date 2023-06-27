@@ -68,8 +68,6 @@ pub async fn idea(ctx: &Context, msg: &Message) -> CommandResult {
                     })
                 })
                 .await?;
-
-            Ok(())
         }
         None => {
             idea_message
@@ -82,8 +80,8 @@ pub async fn idea(ctx: &Context, msg: &Message) -> CommandResult {
                     })
                 })
                 .await?;
-
-            Ok(())
         }
     }
+
+    Ok(())
 }
